@@ -50,15 +50,8 @@ struct Document {
     double relevance;
 };
 
-struct Query {
-    set<string> plus_words;
-    set<string> minus_words;
-};
-
 class SearchServer {
 public:
-
-    int document_count_ = 0;
 
     void SetStopWords(const string& text) {
         for (const string& word : SplitIntoWords(text)) {
@@ -68,6 +61,7 @@ public:
 
     void AddDocument(int document_id, const string& document) {
         const vector<string> words = SplitIntoWordsNoStop(document);
+        ++document_count_;
         for (const string& word : words) {
             word_to_document_freqs_[word][document_id] += 1. / words.size();
         }
@@ -92,7 +86,13 @@ private:
     map<string, set<int>> word_to_documents_; //слово -> множество id доков, где оно есть
     map<string, map<int, double>> word_to_document_freqs_; // слово -> ( документ -> tf)
     set<string> stop_words_;
+    int document_count_ = 0;
 
+    struct Query {
+    set<string> plus_words;
+    set<string> minus_words;
+    };
+    
     bool IsStopWord(const string& word) const {
         return stop_words_.count(word) > 0;
     }
@@ -120,13 +120,17 @@ private:
         }
         return query_words;
     }
+    
+    double CountIDF(const string& word) const {
+        return log(static_cast<double>(document_count_)/word_to_document_freqs_.at(word).size());
+    }
 
     vector<Document> FindAllDocuments(const Query& query_words) const {
         vector<Document> matched_documents;
         map<int, double> document_to_relevance; // {id, relevance}
         for (const string& word : query_words.plus_words) {
             if (word_to_document_freqs_.count(word)) {
-                double idf = log(static_cast<double>(document_count_) / word_to_document_freqs_.at(word).size());
+                double idf = CountIDF(word);
                 for (const auto& [doc_id, tf] : word_to_document_freqs_.at(word)) {
                     document_to_relevance[doc_id] += idf * tf;
                 }
@@ -144,8 +148,8 @@ SearchServer CreateSearchServer() {
     SearchServer search_server;
     search_server.SetStopWords(ReadLine());
 
-    search_server.document_count_ = ReadLineWithNumber();
-    for (int document_id = 0; document_id < search_server.document_count_; ++document_id) {
+    int document_count = ReadLineWithNumber();
+    for (int document_id = 0; document_id < document_count; ++document_id) {
         search_server.AddDocument(document_id, ReadLine());
     }
 
