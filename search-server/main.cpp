@@ -105,7 +105,7 @@ public:
     }
 
     vector<Document> FindTopDocuments(const string& raw_query, const DocumentStatus& doc_status) const {
-        return FindTopDocuments(raw_query, [doc_status]( DocumentStatus status) { return status == doc_status; });
+        return FindTopDocuments(raw_query, [doc_status](int document_id, DocumentStatus status, int rating) { return status == doc_status; });
     }
 
     vector<Document> FindTopDocuments(const string& raw_query) const {
@@ -224,7 +224,7 @@ private:
             const double inverse_document_freq = ComputeWordInverseDocumentFreq(word);
             for (const auto [document_id, term_freq] : word_to_document_freqs_.at(word)) {
                 DocumentData document_info = documents_.at(document_id);
-                if (predicate( document_info.status)) {
+                if (predicate(document_id, document_info.status, document_info.rating)) {
                     document_to_relevance[document_id] += term_freq * inverse_document_freq;
                 }
             }
@@ -247,6 +247,7 @@ private:
         return matched_documents;
     }
 };
+
 // ==================== для примера =========================
 
 void PrintDocument(const Document& document) {
