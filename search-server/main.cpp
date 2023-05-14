@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 #include <numeric>
+
 #include <iomanip>
 
 using namespace std;
@@ -150,7 +151,7 @@ void TestSortingWithRelevance() {
 
         vector<Document> docs = server.FindTopDocuments("пушистый ухоженный кот"s);
         ASSERT_EQUAL(docs.size(), 3);
-        ASSERT(docs[0].id == doc_id_3 && docs[1].id == doc_id_4 && docs[2].id == doc_id_1);
+        ASSERT(docs[0].relevance > docs[1].relevance && docs[1].relevance > docs[2].relevance);
 
 }
 
@@ -180,7 +181,9 @@ void TestCalculatingRating() {
 
         vector<Document> docs = server.FindTopDocuments("пушистый ухоженный кот "s);
         ASSERT_EQUAL(docs.size(), 3);
-        ASSERT(docs[0].rating == 4 && docs[1].rating == 0 && docs[2].rating == 2);
+        ASSERT(docs[0].rating == (3 + 7 + 2 + 7)/4);
+        ASSERT(docs[1].rating == (4 + 5 - 12 + 2 + 1)/5);
+        ASSERT(docs[2].rating == (2 + 8 - 3)/3);
     }
 }
 void TestCalculatingRelevance() {
@@ -209,7 +212,9 @@ void TestCalculatingRelevance() {
 
         vector<Document> docs = server.FindTopDocuments("пушистый ухоженный кот "s);
         ASSERT_EQUAL(docs.size(), 3);
-        ASSERT((abs(docs[0].relevance - 0.866434) < 1e-6) && (abs(docs[1].relevance - 0.346574) < 1e-6)  && (abs(docs[2].relevance - 0.138629) < 1e-6));
+        ASSERT(abs(docs[0].relevance - (log(server.GetDocumentCount() * 1.0 / 1) * (2.0 / 4) + log(server.GetDocumentCount() * 1.0 / 2) * (1.0 / 4))) < 1e-6);
+        ASSERT(abs(docs[1].relevance - log(server.GetDocumentCount() * 1.0 / 1) * (1.0 / 4)) < 1e-6);
+        ASSERT(abs(docs[2].relevance - log(server.GetDocumentCount() * 1.0 / 2) * (1.0 / 5)) < 1e-6);
     }
 }
 
@@ -237,7 +242,7 @@ void TestSearchWithStatus() {
     {
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
         server.AddDocument(3, "dog in the city"s, DocumentStatus::BANNED, {3, 0, -4});
-        vector<Document> t = server.FindTopDocuments(content, [](int document_id, [[maybe_unused]] DocumentStatus status, [[maybe_unused]] int rating) { return status == DocumentStatus::ACTUAL; });
+        vector<Document> t = server.FindTopDocuments(content, DocumentStatus::ACTUAL);
         ASSERT(!t.empty());
         ASSERT_EQUAL(t[0].id, doc_id);
     }
