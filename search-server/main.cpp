@@ -163,41 +163,33 @@ public:
     }
  
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const {
-        try {
-            const Query query = ParseQuery(raw_query);
-            vector<string> matched_words;
-            for (const string& word : query.plus_words) {
-                if (word_to_document_freqs_.count(word) == 0) {
-                    continue;
-                }
-                if (word_to_document_freqs_.at(word).count(document_id)) {
-                    matched_words.push_back(word);
-                }
+        const Query query = ParseQuery(raw_query);
+        vector<string> matched_words;
+        for (const string& word : query.plus_words) {
+            if (word_to_document_freqs_.count(word) == 0) {
+                continue;
             }
-            for (const string& word : query.minus_words) {
-                if (word_to_document_freqs_.count(word) == 0) {
-                    continue;
-                }
-                if (word_to_document_freqs_.at(word).count(document_id)) {
-                    matched_words.clear();
-                    break;
-                }
+            if (word_to_document_freqs_.at(word).count(document_id)) {
+                matched_words.push_back(word);
             }
-            return tuple{matched_words, documents_.at(document_id).status};
-        } catch (const invalid_argument& e) {
-            throw e;
         }
+        for (const string& word : query.minus_words) {
+            if (word_to_document_freqs_.count(word) == 0) {
+                continue;
+            }
+            if (word_to_document_freqs_.at(word).count(document_id)) {
+                matched_words.clear();
+                break;
+            }
+        }
+        return tuple{matched_words, documents_.at(document_id).status};
     }
  
     int GetDocumentId(int index) const { //было уже исправлено, добавлен контейнер на основе вектора, поиск идет по нему 
-        int i = 0;
-        for (int id : id_list_) {
-            if (i == index) {
-                return id;
-            }
-            ++i;
+        if (index < 0 || index >= id_list_.size()) {
+            throw out_of_range("некорректный индекс.");
         }
-        throw out_of_range("некорректный индекс.");
+        return id_list_[index];
     }
  
 private:
@@ -316,14 +308,3 @@ private:
         return matched_documents;
     }
 };
-
-void PrintDocument(const Document& document) {
-    cout << "{ "s
-        << "document_id = "s << document.id << ", "s
-        << "relevance = "s << document.relevance << ", "s
-        << "rating = "s << document.rating
-        << " }"s << endl;
-}
-int main() {
-    return 0;
-}
