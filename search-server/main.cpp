@@ -131,10 +131,9 @@ public:
     template <typename DocumentPredicate>
     vector<Document> FindTopDocuments(const string& raw_query,
                                       DocumentPredicate document_predicate) const {
-        try {
-            const Query query = ParseQuery(raw_query);
-            vector<Document> result = FindAllDocuments(query, document_predicate);
-            sort(result.begin(), result.end(),
+        const Query query = ParseQuery(raw_query);
+        vector<Document> result = FindAllDocuments(query, document_predicate);
+        sort(result.begin(), result.end(),
              [](const Document& lhs, const Document& rhs) {
                  if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
                      return lhs.rating > rhs.rating;
@@ -142,13 +141,10 @@ public:
                      return lhs.relevance > rhs.relevance;
                  }
              });
-            if (result.size() > MAX_RESULT_DOCUMENT_COUNT) {
-                result.resize(MAX_RESULT_DOCUMENT_COUNT);
-            }
-            return result;
-        } catch (const invalid_argument& e) {
-            throw e;
-        }  
+        if (result.size() > MAX_RESULT_DOCUMENT_COUNT) {
+            result.resize(MAX_RESULT_DOCUMENT_COUNT);
+        }
+        return result; 
     }
  
     vector<Document> FindTopDocuments(const string& raw_query, DocumentStatus status) const {
@@ -193,7 +189,7 @@ public:
         }
     }
  
-    int GetDocumentId(int index) const {
+    int GetDocumentId(int index) const { //было уже исправлено, добавлен контейнер на основе вектора, поиск идет по нему 
         int i = 0;
         for (int id : id_list_) {
             if (i == index) {
@@ -269,18 +265,14 @@ private:
     Query ParseQuery(const string& text) const {
         Query query;
         for (const string& word : SplitIntoWords(text)) {
-            try {
-                const QueryWord query_word = ParseQueryWord(word);
-                if (!query_word.is_stop) {
-                    if (query_word.is_minus) {
-                        query.minus_words.insert(query_word.data);
-                    } else {
-                        query.plus_words.insert(query_word.data);
-                    }
+            const QueryWord query_word = ParseQueryWord(word);
+            if (!query_word.is_stop) {
+                if (query_word.is_minus) {
+                    query.minus_words.insert(query_word.data);
+                } else {
+                    query.plus_words.insert(query_word.data);
                 }
-            } catch (const invalid_argument& e) {
-                throw e;
-            }          
+            }         
         }
         return query;
     }
@@ -324,3 +316,14 @@ private:
         return matched_documents;
     }
 };
+
+void PrintDocument(const Document& document) {
+    cout << "{ "s
+        << "document_id = "s << document.id << ", "s
+        << "relevance = "s << document.relevance << ", "s
+        << "rating = "s << document.rating
+        << " }"s << endl;
+}
+int main() {
+    return 0;
+}
