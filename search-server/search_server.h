@@ -35,10 +35,17 @@ public:
     
     int GetDocumentCount() const;
 
-    int GetDocumentId(int index) const;
-
+    vector<int>::const_iterator begin() const;
+    
+    vector<int>::const_iterator end() const;
+        
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const;
     
+    const map<string, double>& GetWordFrequencies(int document_id) const;
+    
+    void RemoveDocument(int document_id);
+ 
+     
 private:
     struct QueryWord {
         string data;
@@ -50,6 +57,8 @@ private:
     map<string, map<int, double>> word_to_document_freqs_;
     map<int, DocumentData> documents_;
     vector<int> document_ids_;
+    map<int, map<string, double>> freqs_in_docs_;
+    const map<string, double> empty_map_;
 
     bool IsStopWord(const string& word) const;
 
