@@ -14,6 +14,7 @@
         const double inv_word_count = 1.0 / words.size();
         for (const string& word : words) {
             word_to_document_freqs_[word][document_id] += inv_word_count;
+            freqs_in_docs_[document_id][word] += inv_word_count;
         }
         documents_.emplace(document_id, DocumentData{ComputeAverageRating(ratings), status});
         document_ids_.push_back(document_id);
@@ -34,8 +35,12 @@
         return documents_.size();
     }
 
-    int SearchServer::GetDocumentId(int index) const {
-        return document_ids_.at(index);
+    vector<int>::const_iterator SearchServer::begin() const{
+        return document_ids_.begin();
+    }
+
+    vector<int>::const_iterator SearchServer::end() const{
+        return document_ids_.end();
     }
 
     tuple<vector<string>, DocumentStatus> SearchServer::MatchDocument(const string& raw_query, int document_id) const {
@@ -62,10 +67,37 @@
         return {matched_words, documents_.at(document_id).status};
     }
 
+    const map<string, double>& SearchServer::GetWordFrequencies(int document_id) const {
+        if (count(document_ids_.begin(), document_ids_.end(), document_id) == 0) {
+            return empty_map_;
+        }
+        return freqs_in_docs_.at(document_id);
+    }
+
+    void SearchServer::RemoveDocument(int document_id) {
+        if (count(document_ids_.begin(), document_ids_.end(), document_id) == 0) {
+            return;
+        }
+        document_ids_.erase(find(document_ids_.begin(), document_ids_.end(), document_id));
+        documents_.erase(documents_.find(document_id));
+        freqs_in_docs_.erase(freqs_in_docs_.find(document_id));
+        for (auto& [word, info] : word_to_document_freqs_) {
+            auto it = info.find(document_id);
+            if (it != info.end()) {
+                info.erase(it);
+            }
+        }
+    }
+ 
+ 
+
     const set<string> stop_words_;
     map<string, map<int, double>> word_to_document_freqs_;
     map<int, DocumentData> documents_;
     vector<int> document_ids_;
+    map<int, map<string, double>> freqs_in_docs_;
+    const map<string, double> empty_map_;
+    
 
     bool SearchServer::IsStopWord(const string& word) const {
         return stop_words_.count(word) > 0;
@@ -136,5 +168,3 @@
     double SearchServer::ComputeWordInverseDocumentFreq(const string& word) const {
         return log(GetDocumentCount() * 1.0 / word_to_document_freqs_.at(word).size());
     }
-
-    
