@@ -28,3 +28,4 @@ void RemoveDuplicates(SearchServer& search_server) {
             }
         }
     }
+}
