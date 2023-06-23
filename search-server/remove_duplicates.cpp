@@ -2,30 +2,25 @@
 
 void RemoveDuplicates(SearchServer& search_server) {
     set<int> ids_to_delete;
-    for (const int doc_id1 : search_server) {
-        const auto word_freq1 = search_server.GetWordFrequencies(doc_id1);
-        if (ids_to_delete.count(doc_id1) > 0) {
-            continue;
+    map<int, set<string>> docs_words;
+    for (const int doc_id : search_server) {
+        const auto& words = search_server.GetWordFrequencies(doc_id);
+        for (const auto& [word, freq] : words) {
+            docs_words[doc_id].insert(word);
         }
-        for (const int doc_id2 : search_server) {
-            if (ids_to_delete.count(doc_id2) > 0 || doc_id1 == doc_id2) {
-                continue;
-            }
-            const auto word_freq2 = search_server.GetWordFrequencies(doc_id2);
-            if (word_freq1.size() != word_freq2.size()) {
-                continue;
-            } else {
-                bool flag = true;
-                for (int i = 0; i < word_freq1.size(); ++i) {
-                    if (next(word_freq1.begin(), i)->first != (next(word_freq2.begin(), i)->first)) {
-                        flag = false;
-                    }
-                }
-                if (flag) {
-                    cout << "Found duplicate document id "s << doc_id2 << endl;
-                    ids_to_delete.insert(doc_id2);
-                }
-            }
+    }
+    int i = 0; //счетчик позиции пары в docs_words
+    for (const auto& [id, words] : docs_words) {
+        auto it = find_if(next(docs_words.begin(), i), docs_words.end(), [id, words](const pair<int, set<string>>& x) {
+            return id != x.first && words == x.second;
+        });
+        if (it != docs_words.end() && ids_to_delete.count(it->first) == 0) {
+            cout << "Found duplicate document id "s << it->first << endl;
+            ids_to_delete.insert(it->first);
         }
+        ++i;
+    }
+    for (int id : ids_to_delete) {
+        search_server.RemoveDocument(id);
     }
 }
