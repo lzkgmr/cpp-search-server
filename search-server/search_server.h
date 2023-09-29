@@ -22,6 +22,8 @@ const int MAX_RESULT_DOCUMENT_COUNT = 5;
 
 const double EPSILON = 1e-6;
 
+using MatchReturn = tuple<vector<string_view>, DocumentStatus>;
+
 class SearchServer {
 public:
 
@@ -56,20 +58,17 @@ public:
 
     set<int>::const_iterator end() const;
 
-    tuple<vector<string_view>, DocumentStatus> MatchDocument(string_view raw_query, int document_id) const;
+    MatchReturn MatchDocument(string_view raw_query, int document_id) const;
     
     template <typename ExecutionPolicy>
-    tuple<vector<string_view>, DocumentStatus> MatchDocument(ExecutionPolicy &policy, string_view raw_query, int document_id) const;
+    MatchReturn MatchDocument(ExecutionPolicy &policy, string_view raw_query, int document_id) const;
 
     const map<string_view, double>& GetWordFrequencies(int document_id) const;
 
     void RemoveDocument(int document_id);
-
     void RemoveDocument(execution::sequenced_policy, int document_id);
-
     void RemoveDocument(execution::parallel_policy, int document_id);
 
-    deque<string> storage;
 
 private:
     struct QueryWord {
@@ -83,7 +82,7 @@ private:
     map<int, DocumentData> documents_;
     set<int> document_ids_;
     map<int, map<string_view, double>> freqs_in_docs_;
-    const map<string_view, double> empty_map_;
+    deque<string> storage;
 
     bool IsStopWord(const string_view word) const;
 
@@ -160,7 +159,7 @@ vector<Document> SearchServer::FindAllDocuments(const Query& query, DocumentPred
 
 template <typename ExecutionPolicy, typename DocumentPredicate>
     vector<Document> SearchServer::FindAllDocuments(ExecutionPolicy &policy, const Query& query, DocumentPredicate document_predicate) const {
-    if constexpr (std::is_same_v<std::decay_t<ExecutionPolicy>, std::execution::sequenced_policy>) {
+    if (is_same_v<decay_t<ExecutionPolicy>, execution::sequenced_policy>) {
         return FindAllDocuments(query, document_predicate);
     } else {
         ConcurrentMap<int, double> document_to_relevance(15);
@@ -184,11 +183,10 @@ template <typename ExecutionPolicy, typename DocumentPredicate>
         return matched_documents;
     }
 }
-        
 
 template <typename ExecutionPolicy>
-tuple<vector<string_view>, DocumentStatus> SearchServer::MatchDocument(ExecutionPolicy &policy, string_view raw_query, int document_id) const {
-    if constexpr (std::is_same_v<std::decay_t<ExecutionPolicy>, std::execution::sequenced_policy>) {
+MatchReturn SearchServer::MatchDocument(ExecutionPolicy &policy, string_view raw_query, int document_id) const {
+    if (is_same_v<decay_t<ExecutionPolicy>, execution::sequenced_policy>) {
         return MatchDocument(raw_query, document_id);
     } else {
         if (!IsIdCorrect(document_id)) {
@@ -244,7 +242,7 @@ vector<Document> SearchServer::FindTopDocuments(string_view raw_query, DocumentP
 
 template <typename ExecutionPolicy, typename DocumentPredicate>
 vector<Document> SearchServer::FindTopDocuments(ExecutionPolicy &policy, string_view raw_query, DocumentPredicate document_predicate) const {
-    if constexpr (std::is_same_v<std::decay_t<ExecutionPolicy>, std::execution::sequenced_policy>) {
+    if (is_same_v<decay_t<ExecutionPolicy>, execution::sequenced_policy>) {
         return FindTopDocuments(raw_query, document_predicate);
     } else {
         const auto query = ParseQuery(raw_query, false);
@@ -266,14 +264,13 @@ vector<Document> SearchServer::FindTopDocuments(ExecutionPolicy &policy, string_
         }
     }
 
-    template <typename ExecutionPolicy>
-    vector<Document> SearchServer::FindTopDocuments(ExecutionPolicy &policy, string_view raw_query, DocumentStatus status) const {
-        return FindTopDocuments(policy, raw_query, [status](int document_id, DocumentStatus document_status, int rating) {
-        return document_status == status;
-        });
-    }
+template <typename ExecutionPolicy>
+vector<Document> SearchServer::FindTopDocuments(ExecutionPolicy &policy, string_view raw_query, DocumentStatus status) const {
+    return FindTopDocuments(policy, raw_query, [status](int document_id, DocumentStatus document_status, int rating) {
+        return document_status == status;});
+}
 
-    template <typename ExecutionPolicy>
-    vector<Document> SearchServer::FindTopDocuments(ExecutionPolicy &policy, string_view raw_query) const {
-        return FindTopDocuments(policy, raw_query, DocumentStatus::ACTUAL);
-    }
+template <typename ExecutionPolicy>
+vector<Document> SearchServer::FindTopDocuments(ExecutionPolicy &policy, string_view raw_query) const {
+    return FindTopDocuments(policy, raw_query, DocumentStatus::ACTUAL);
+}
