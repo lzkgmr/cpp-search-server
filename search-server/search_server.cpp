@@ -54,13 +54,14 @@ set<int>::const_iterator SearchServer::end() const {
 
 
 const map<string_view, double>& SearchServer::GetWordFrequencies(int document_id) const {
+    static const map<string_view, double> empty_map_;
     if (count(document_ids_.begin(), document_ids_.end(), document_id) == 0) {
         return empty_map_;
     }
     return freqs_in_docs_.at(document_id);
 }
 
-tuple<vector<string_view>, DocumentStatus> SearchServer::MatchDocument(string_view raw_query, int document_id) const {
+MatchReturn SearchServer::MatchDocument(string_view raw_query, int document_id) const {
     if (!IsIdCorrect(document_id)) {
         throw out_of_range("неверный id"s);
     } 
